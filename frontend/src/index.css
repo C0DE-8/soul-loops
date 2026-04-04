@@ -1,0 +1,43 @@
+/* index.css */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: #030611; /* deep dark base */
+  /* Prevent any scrolling on the main axis */
+  overflow: hidden; 
+  /* Standardizes touch behavior for mobile */
+  touch-action: none; 
+}
+
+body {
+  /* Ensuring no horizontal or vertical bleed */
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Ensure root takes full height */
+  width: 100%;
+}
+
+/* Updated .app to be a rigid container */
+.app {
+  width: 100%;
+  height: 100%; /* Changed from min-height: 100vh to height: 100% */
+  overflow: hidden; /* Lock internal app scrolling */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Optional: Smooth transitions if you switch between auth pages */
+* {
+  box-sizing: border-box;
+}
