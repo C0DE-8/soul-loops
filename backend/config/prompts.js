@@ -26,7 +26,7 @@ module.exports = {
         
         let skills = [];
         try { 
-            // Parses from soul_library: permanent_skills column
+            // Parses from player.permanent_skills (users.permanent_skills via fetchPlayerState)
             skills = (typeof player.permanent_skills === 'string') 
                 ? JSON.parse(player.permanent_skills) 
                 : (player.permanent_skills || []); 

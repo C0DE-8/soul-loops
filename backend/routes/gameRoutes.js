@@ -4,12 +4,18 @@ const router = express.Router();
 const db = require('../config/db');
 const { verifyToken } = require('../middleware/auth');
 
-const { fetchActivePlayerState } = require('../utils/gameAction/fetchPlayerState');
+const { fetchActivePlayerState, fetchLatestLifeForUser } = require('../utils/gameAction/fetchPlayerState');
 const { applyActionFlow } = require('../utils/gameAction/applyActionFlow');
+const {
+    SOUL_STREAM_ACTION,
+    processSoulStreamTransition,
+    rebirthWithVessel
+} = require('../utils/reincarnationEngine');
 const { buildAiGameResponse } = require('../utils/gameAction/buildAiGameResponse');
 const { finalizeChoicesAndStatus } = require('../utils/gameAction/finalizeChoices');
 const { saveUpdatedPlayerState } = require('../utils/gameAction/savePlayerState');
 const { logActionResult } = require('../utils/gameAction/logActionResult');
+const { getShopInventory, purchaseSkill } = require('../utils/meta/soulLibraryEngine');
 
 // Lock down these routes to authenticated users only
 router.use(verifyToken);
@@ -68,6 +74,21 @@ router.post('/action', async (req, res) => {
 
         if (!normalizedAction) {
             return res.status(400).json({ error: "action is required." });
+        }
+
+        // --- SOUL STREAM (death transition — bypass normal action pipeline) ---
+        if (normalizedAction === SOUL_STREAM_ACTION) {
+            const latestLife = await fetchLatestLifeForUser(userId);
+            if (!latestLife) {
+                return res.status(404).json({ error: "No life record found for this soul." });
+            }
+            if (Number(latestLife.is_alive) === 1) {
+                return res.status(400).json({
+                    error: "Your vessel still lives. The Soul Stream is only for the departed."
+                });
+            }
+            const soulStreamPayload = await processSoulStreamTransition(userId, latestLife);
+            return res.json(soulStreamPayload);
         }
 
         // --- 2. FETCH PLAYER STATE ---
@@ -175,6 +196,91 @@ router.post('/action', async (req, res) => {
     } catch (err) {
         console.error("MASTER_ACTION_ERROR:", err);
         return res.status(500).json({ error: "System Error.", details: err.message });
+    }
+});
+
+// ==========================================
+// ROUTE 3: POST /reincarnate — choose vessel after Soul Stream
+// ==========================================
+router.post('/reincarnate', async (req, res) => {
+    const userId = req.user?.userId;
+    const vesselId = req.body?.vessel_id ?? req.body?.vesselId;
+
+    if (!userId) {
+        return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    try {
+        const payload = await rebirthWithVessel(userId, vesselId);
+        return res.status(201).json(payload);
+    } catch (err) {
+        if (err.code === 'ALREADY_ALIVE') {
+            return res.status(400).json({ error: "An active vessel already exists. Finish or lose that life first." });
+        }
+        if (err.code === 'SOUL_STREAM_REQUIRED') {
+            return res.status(400).json({
+                error: "Complete the Soul Stream transition before choosing a vessel."
+            });
+        }
+        if (err.code === 'INVALID_VESSEL') {
+            return res.status(400).json({ error: err.message });
+        }
+        if (err.code === 'NOT_FOUND') {
+            return res.status(404).json({ error: err.message });
+        }
+        console.error("REBIRTH_ERROR:", err);
+        return res.status(500).json({ error: "Rebirth failed.", details: err.message });
+    }
+});
+
+// ==========================================
+// ROUTE 4 & 5: Soul Library (meta shop) — /api/game/shop/*
+// ==========================================
+router.get('/shop/library', async (req, res) => {
+    const userId = req.user?.userId;
+
+    try {
+        const data = await getShopInventory(userId, db);
+        return res.json(data);
+    } catch (err) {
+        if (err.code === 'USER_NOT_FOUND' || err.code === 'INVALID_USER') {
+            return res.status(404).json({ error: err.message });
+        }
+        console.error('SHOP_LIBRARY_ERROR:', err);
+        return res.status(500).json({ error: 'Failed to load Soul Library.', details: err.message });
+    }
+});
+
+router.post('/shop/buy', async (req, res) => {
+    const userId = req.user?.userId;
+    const skillId = req.body?.skill_id ?? req.body?.skillId;
+
+    try {
+        const result = await purchaseSkill(userId, skillId, db);
+        return res.status(200).json(result);
+    } catch (err) {
+        if (err.code === 'INVALID_USER' || err.code === 'INVALID_SKILL_ID') {
+            return res.status(400).json({ error: err.message, code: err.code });
+        }
+        if (err.code === 'USER_NOT_FOUND') {
+            return res.status(404).json({ error: err.message, code: err.code });
+        }
+        if (err.code === 'SKILL_NOT_FOUND') {
+            return res.status(404).json({ error: err.message, code: err.code });
+        }
+        if (err.code === 'ALREADY_OWNED') {
+            return res.status(409).json({ error: err.message, code: err.code });
+        }
+        if (err.code === 'INSUFFICIENT_KARMA') {
+            return res.status(400).json({
+                error: err.message,
+                code: err.code,
+                karma_balance: err.karma_balance,
+                karma_required: err.karma_required
+            });
+        }
+        console.error('SHOP_BUY_ERROR:', err);
+        return res.status(500).json({ error: 'Purchase failed.', details: err.message });
     }
 });
 
