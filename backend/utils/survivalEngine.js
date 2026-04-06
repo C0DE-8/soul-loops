@@ -1,35 +1,42 @@
 /**
- * survivalEngine.js
- * Calculates metabolic costs and status effects based on player actions.
+ * survivalEngine.js - Enhanced with Travel Costs
  */
 
 const calculateSurvivalCost = (player, action) => {
-    let hungerCost = 2; // Base movement cost
-    let spCost = 5;     // Base movement cost
+    let hungerCost = 2; // Base activity cost
+    let spCost = 5;     // Base activity cost
 
     const normalizedAction = action.toLowerCase();
 
-    // Context-specific costs
-    if (normalizedAction.includes('attack')) {
+    // --- 1. CONTEXT-SPECIFIC COSTS ---
+    if (normalizedAction.includes('travel') || normalizedAction.includes('move to')) {
+        // Traveling across zones is exhausting
+        // Dwarves/Predators might have different modifiers
+        hungerCost = 15; 
+        
+        // SPD Penalty: Lower Speed makes travel cost MORE Stamina
+        const spdModifier = Math.max(1, 20 / (player.speed || 1)); 
+        spCost = 20 * spdModifier; 
+
+    } else if (normalizedAction.includes('attack')) {
         hungerCost = 8;
         spCost = 15;
     } else if (normalizedAction.includes('rest')) {
         hungerCost = 1;
-        spCost = -25; // Restores SP
+        spCost = -25; // Restore SP
     } else if (normalizedAction.includes('eat')) {
-        hungerCost = -30; // Restores Hunger
+        hungerCost = -40; // Restore Hunger (Significant)
         spCost = 5;
     }
 
-    // Path-based modifiers (Predators burn fuel faster, etc.)
-    if (player.vessel_type === 'Predator') hungerCost *= 1.5;
-    if (player.vessel_type === 'Prey') spCost *= 0.8;
+    // --- 2. VESSEL MODIFIERS ---
+    if (player.vessel_type === 'Predator') hungerCost *= 1.3;
+    if (player.vessel_type === 'Scavenger') hungerCost *= 0.8; // Scavengers are efficient
 
-    // Apply changes
+    // --- 3. APPLY CALCULATIONS ---
     const newHunger = Math.max(0, Math.min(100, player.hunger - hungerCost));
     const newSP = Math.max(0, Math.min(player.max_sp, player.sp - spCost));
 
-    // Determine status effects
     let statusNotice = "";
     let healthPenalty = 0;
 
@@ -37,14 +44,13 @@ const calculateSurvivalCost = (player, action) => {
         statusNotice += "[SYSTEM: STARVATION DETECTED. HP REDUCED.] ";
         healthPenalty = 5;
     }
-
     if (newSP <= 0) {
-        statusNotice += "[SYSTEM: EXHAUSTION DETECTED. SPEED DEBUFF.] ";
+        statusNotice += "[SYSTEM: EXHAUSTION DETECTED. ACTION EFFICIENCY DROPPED.] ";
     }
 
     return {
-        hunger: newHunger,
-        sp: newSP,
+        hunger: Math.floor(newHunger),
+        sp: Math.floor(newSP),
         healthPenalty,
         statusNotice
     };

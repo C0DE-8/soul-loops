@@ -1,63 +1,71 @@
 /**
- * gameEngine.js
- * Integrated with Survival Vitals (Hunger/SP)
+ * gameEngine.js - THE "IMPOSSIBLE MODE" UPDATE
  */
 
-// In utils/gameEngine.js
 const calculateCombat = (player, monster) => {
-    const hungerFactor = player.hunger <= 0 ? 0.5 : 1.0;
+    // 1. DIMINISHING RETURNS (Anti-Farm Logic)
+    // If you are way stronger than the prey, your soul doesn't grow from the kill.
+    const levelDiff = player.current_level - monster.base_level;
+    let xpMultiplier = 1.0;
 
-    const rawDamage =
-        ((Number(player.offense) * Number(player.current_level)) - (Number(monster.base_defense || 5) / 2)) *
-        hungerFactor;
+    if (levelDiff > 5) xpMultiplier = 0.5;   // 50% XP
+    if (levelDiff > 10) xpMultiplier = 0.1;  // 10% XP
+    if (levelDiff > 20) xpMultiplier = 0.0;  // 0 XP (You gain nothing from ants)
 
+    // 2. SURVIVAL DEBUFFS
+    // Hunger < 10 = Weakened State (50% DMG)
+    const hungerFactor = (player.hunger < 10) ? 0.5 : 1.0;
+    
+    const rawDamage = ((player.offense * player.current_level) - (monster.base_defense / 2)) * hungerFactor;
     const damageDealt = Math.max(1, Math.floor(rawDamage));
+    
+    const isMonsterDead = (monster.base_hp - damageDealt) <= 0;
 
-    // CRITICAL FIX: Read current_hp from the active encounter, not the base template
-    const monsterCurrentHp = Number(monster.current_hp);
-    const monsterRemainingHp = Math.max(0, monsterCurrentHp - damageDealt);
-    const isMonsterDead = monsterRemainingHp <= 0;
+    // 3. XP REWARD SCALING
+    const rankXP = { 'F': 20, 'E': 50, 'D': 100, 'C': 250, 'B': 500, 'A': 1000, 'S': 5000 };
+    const baseXP = isMonsterDead ? (rankXP[monster.danger_rank] || 20) : 5;
+    
+    // Apply the Level Difference Penalty
+    const xpGained = Math.floor(baseXP * xpMultiplier);
 
-    const combatSpCost = 15;
-    const combatHungerCost = 8;
-
-    const rankXP = { F: 20, E: 50, D: 100, C: 250, B: 500, A: 1000, S: 5000 };
-    // Multiply XP by the monster's dynamic level to make harder fights more rewarding
-    const xpGained = isMonsterDead ? ((rankXP[monster.danger_rank] || 20) * Number(monster.dynamic_level || 1)) : 5;
-
-    return {
-        damageDealt,
-        isMonsterDead,
-        xpGained,
-        spCost: combatSpCost,
-        hungerCost: combatHungerCost,
-        monsterRemainingHp
+    return { 
+        damageDealt, 
+        isMonsterDead, 
+        xpGained, 
+        monsterRemainingHp: Math.max(0, monster.base_hp - damageDealt) 
     };
 };
 
 const processLevelUp = (player) => {
-    if (Number(player.xp) < Number(player.next_level_xp)) {
-        return { leveledUp: false };
+    // EXP CURVE: Level cubed * 100. 
+    // LV 1: 100 | LV 10: 100,000 | LV 20: 800,000
+    const requiredXp = Math.pow(player.current_level, 3) * 100;
+
+    if (player.xp >= requiredXp) {
+        // --- THE EVOLUTION WALL ---
+        // If the player hits Level 10, 20, or 30, they CANNOT level up 
+        // until they evolve their vessel.
+        const evolutionMilestones = [10, 20, 30, 50];
+        if (evolutionMilestones.includes(player.current_level)) {
+            return { 
+                leveledUp: false, 
+                evolutionRequired: true, 
+                systemLog: "[SYSTEM_RESTRICTION]: Vessel reached maximum capacity. Evolution required to progress." 
+            };
+        }
+
+        const newLevel = player.current_level + 1;
+        return {
+            leveledUp: true,
+            current_level: newLevel,
+            max_hp: player.max_hp + 10,
+            offense: player.offense + 2,
+            defense: player.defense + 2,
+            next_level_xp: Math.pow(newLevel, 3) * 100,
+            systemLog: `[SYSTEM_EVOLUTION]: Soul Density stabilized at Level ${newLevel}.`
+        };
     }
-
-    const newLevel = Number(player.current_level) + 1;
-    const hpGain = 15;
-    const mpGain = 10;
-    const statGain = 3;
-
-    return {
-        leveledUp: true,
-        current_level: newLevel,
-        max_hp: Number(player.max_hp) + hpGain,
-        hp: Number(player.max_hp) + hpGain, // full heal
-        max_mp: Number(player.max_mp) + mpGain,
-        mp: Number(player.max_mp) + mpGain, // optional full mana refill
-        offense: Number(player.offense) + statGain,
-        defense: Number(player.defense) + statGain,
-        speed: Number(player.speed) + statGain,
-        next_level_xp: Math.floor(Number(player.next_level_xp) * 2.5),
-        systemLog: `[SYSTEM_EVOLUTION]: Leveled to ${newLevel}. Strength grows.`
-    };
+    return { leveledUp: false };
 };
 
 module.exports = { calculateCombat, processLevelUp };
