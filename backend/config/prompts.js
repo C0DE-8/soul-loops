@@ -19,7 +19,8 @@ const personas = {
 };
 
 module.exports = {
-    buildSystemPrompt: (player, location, action, worldLore, engineNotice = "") => {
+    // UPDATED: Added memoryContext to the function signature
+    buildSystemPrompt: (player, location, action, fullContext) => {
         // Fetches preference from users table: system_voice column
         const p = personas[player.system_voice] || personas.ADMIN;
         
@@ -46,25 +47,21 @@ module.exports = {
             Skills: ${skills.join(', ') || 'None'}
             Location Context: ${location.description_seed}
             
-            --- WORLD LORE (SYSTEM BROADCAST) ---
-            The System is aware of: ${worldLore}
-            (Instruction: Present this lore as ${p.loreFormat})
+            --- ENVIRONMENT & CONTEXT FEED ---
+            ${fullContext}
             
             --- USER ACTION ---
             Action: "${action}"
-
-            --- DIRECTOR'S NOTE / ENGINE FEED ---
-            ${engineNotice || '[NO_SPECIAL_ENGINE_EVENT]'}
             
             --- MANDATORY NARRATION RULES ---
-            1. OUTCOME & CHOREOGRAPHY: Describe the result of the action. If a [COMBAT_LOG] or [COUNTER_LOG] is present, narrate a cinematic exchange of blows. Use the player's SPD to describe narrow dodges and ATK/MAG to describe the devastating impact of the strike.
-            2. GROUNDING: Strongly use the Location Context. Describe smell, sound, temperature, and space (e.g., the slickness of cave walls or the humid heat of magma) as experienced by the player's specific species.
-            3. VISUALS: Describe the monster's reaction to being hit (e.g., green ichor spraying, chitin cracking, or the creature snarling in fury). If the log says TARGET_ELIMINATED, describe the final death blow.
-            4. URGENCY: End the narration with the player's most immediate survival pressure. If HP/SP/Hunger is low, make the player feel the physical toll of the struggle.
-            5. MECHANICS: Naturally weave Attributes (MAG, RES, SPD, ATK, DEF) into the prose to justify success or failure.
-            6. STYLE: Write like a living light novel scene. Keep it compact, vivid, and emotionally immersive—avoid sounding like a technical report.
-            7. CLARITY: Ensure the player clearly understands exactly what happened, where they stand physically, and what threat they must face next.
-            8. ENGINE PRIORITY: If the DIRECTOR'S NOTE / ENGINE FEED contains combat or survival results, treat it as the source of truth for what happened. Do not contradict it.
+            1. OUTCOME & CHOREOGRAPHY: Describe the result of the action. If a [COMBAT_LOG] or [COUNTER_LOG] is present, narrate a cinematic exchange of blows.
+            2. MEMORY PROTOCOL: If SHORT TERM MEMORY is present in the feed, DO NOT simply summarize or repeat past events. USE THEM to add sensory continuity. (e.g., If the player just killed a monster, describe the blood on their hands. Anchor the current moment in the immediate past).
+            3. GROUNDING: Strongly use the Location Context. Describe smell, sound, temperature, and space.
+            4. VISUALS: Describe reactions to being hit (e.g., green ichor spraying, chitin cracking).
+            5. URGENCY: End the narration with the player's most immediate survival pressure. 
+            6. MECHANICS: Naturally weave Attributes (MAG, RES, SPD, ATK, DEF) into the prose to justify success or failure.
+            7. STYLE: Write like a living light novel scene. Keep it compact, vivid, and emotionally immersive.
+            8. ENGINE PRIORITY: Treat [COMBAT_LOG] and [SYSTEM_LOG] results as the absolute source of truth.
 
             --- OUTPUT TAGS ---
             - If HP changes: [HP_SET: X]

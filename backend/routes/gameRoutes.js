@@ -83,13 +83,35 @@ router.post('/action', async (req, res) => {
 
         player = actionFlow.player;
 
+        // --- 3.5. SHORT TERM MEMORY FETCH ---
+        const [memoryRows] = await db.execute(`
+            SELECT user_action, system_response 
+            FROM action_logs 
+            WHERE life_id = ? 
+            ORDER BY created_at DESC 
+            LIMIT 3
+        `, [player.life_id]);
+
+        let memoryContext = "";
+        if (memoryRows.length > 0) {
+            const chronologicalMemory = memoryRows.reverse();
+            memoryContext = "\n--- SHORT TERM MEMORY (PAST EVENTS) ---\n";
+            chronologicalMemory.forEach((log, index) => {
+                const cleanResponse = log.system_response.replace(/\[.*?\]/g, '').substring(0, 150) + "..."; 
+                memoryContext += `Past Turn ${index + 1} - Player did: "${log.user_action}". Result: "${cleanResponse}"\n`;
+            });
+            memoryContext += "[END MEMORY]\n";
+        }
+
         // --- 4. BUILD AI RESPONSE ---
+        // We now pass memoryContext to the builder
         const aiData = await buildAiGameResponse({
             player,
             action: normalizedAction,
             engineNotice: actionFlow.engineNotice,
             monsterContext: actionFlow.monsterContext,
             worldLore: actionFlow.worldLore,
+            memoryContext: memoryContext,
             db
         });
 
@@ -126,11 +148,22 @@ router.post('/action', async (req, res) => {
                 hp: finalData.finalHp,
                 max_hp: player.max_hp,
                 hunger: player.hunger,
-                sp: player.sp,
+                sp: player.sp || 0, // Fallback to prevent null errors
                 level: player.current_level,
                 xp: player.xp,
                 next_mark: player.next_level_xp
             },
+            // --- NEW: THE ENEMY HUD (DATABASE DRIVEN) ---
+            enemy_stats: actionFlow.activeMonster ? {
+                name: actionFlow.activeMonster.name,
+                level: actionFlow.activeMonster.dynamic_level,
+                hp: actionFlow.activeMonster.current_hp,
+                max_hp: actionFlow.activeMonster.max_hp,
+                rank: actionFlow.activeMonster.danger_rank,
+                atk: Number(actionFlow.activeMonster.base_offense || 0),
+                def: Number(actionFlow.activeMonster.base_defense || 0)
+            } : null,
+            // --------------------------------------------
             system_output: finalData.cleanStory,
             choices: finalData.finalChoices,
             visuals: {

@@ -72,7 +72,8 @@ async function applyActionFlow({ player, userId, action, db }) {
         monsterContext,
         monsterButtons,
         monsterImageUrl,
-        worldLore: worldData.worldLore || ""
+        worldLore: worldData.worldLore || "",
+        activeMonster: combatData.activeMonster // <--- THE FIX: Passing the monster data down the chain!
     };
 }
 
