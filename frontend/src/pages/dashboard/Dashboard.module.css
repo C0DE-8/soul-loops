@@ -1,41 +1,348 @@
-.dashboardContainer {
+/* Soul Loop — layered scene (background + vessel + entity) */
+
+.shell {
   min-height: 100vh;
-  background: #111827;
+  display: flex;
+  flex-direction: column;
+  background: #050508;
+  color: #e8eef8;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.topBar {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(180deg, rgba(8, 10, 18, 0.95), rgba(8, 10, 18, 0.75));
+  border-bottom: 1px solid rgba(120, 140, 200, 0.12);
+  z-index: 20;
 }
 
-.card {
-  width: 100%;
-  max-width: 500px;
-  background: #ffffff;
-  padding: 30px;
-  border-radius: 16px;
-  text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-}
-
-.title {
-  font-size: 32px;
-  margin-bottom: 10px;
-  color: #111827;
-}
-
-.text {
-  font-size: 16px;
-  margin-bottom: 20px;
-  color: #4b5563;
-}
-
-.button {
-  padding: 12px 20px;
-  border: none;
-  border-radius: 10px;
-  background: #dc2626;
-  color: white;
-  font-size: 15px;
+.identity {
+  font-size: 14px;
   font-weight: 600;
+  color: #b8c9f0;
+}
+
+.identity span {
+  color: #7dd3fc;
+  font-weight: 700;
+}
+
+.logout {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 100, 100, 0.35);
+  background: rgba(40, 20, 25, 0.6);
+  color: #fecaca;
+  font-size: 13px;
   cursor: pointer;
+}
+
+.logout:hover {
+  background: rgba(60, 30, 35, 0.85);
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 10px 16px 12px;
+  flex-shrink: 0;
+  z-index: 15;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8899bb;
+}
+
+.barTrack {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.45s ease;
+}
+
+.hp {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.sp {
+  background: linear-gradient(90deg, #3b82f6, #93c5fd);
+}
+
+.mp {
+  background: linear-gradient(90deg, #a855f7, #d8b4fe);
+}
+
+.hunger {
+  background: linear-gradient(90deg, #f59e0b, #fcd34d);
+}
+
+/* Stage: background + sprites — sits between HUD and controls */
+.stageArea {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.bgLayer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #0a0a10;
+  transition: opacity 0.45s ease;
+  z-index: 0;
+}
+
+.bgLayer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(5, 5, 12, 0.35) 0%,
+    rgba(5, 5, 12, 0.05) 40%,
+    rgba(5, 5, 12, 0.55) 100%
+  );
+  pointer-events: none;
+}
+
+.darkMistBg {
+  background: radial-gradient(ellipse 120% 80% at 50% 40%, #1a1d2e 0%, #0d0d12 55%, #020203 100%) !important;
+  box-shadow: inset 0 0 80px rgba(60, 70, 120, 0.12);
+}
+
+.spriteStage {
+  position: relative;
+  flex: 1;
+  min-height: 220px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Left vessel — persistent */
+.userSlot {
+  position: absolute;
+  left: 4%;
+  bottom: 8%;
+  width: min(26vw, 200px);
+  height: min(42vh, 320px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* Center entity — encounter only */
+.entitySlot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6%;
+  margin: 0 auto;
+  width: min(42vw, 320px);
+  height: min(48vh, 380px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.spriteFrame {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: opacity 0.4s ease;
+}
+
+.spriteImg {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.65));
+}
+
+.breathe {
+  animation: breathe 3.4s ease-in-out infinite;
+}
+
+.breatheSlow {
+  animation: breathe 4.2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.65)) brightness(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.03);
+    filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.55)) brightness(1.06);
+  }
+}
+
+/* Dark Mist placeholder (image failed / missing) */
+.mist {
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 30%, #2a2f45 0%, #12141f 45%, #060608 100%);
+  box-shadow: inset 0 0 50px rgba(100, 110, 180, 0.08), 0 0 40px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+.mist::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(circle at 30% 40%, rgba(180, 190, 255, 0.07), transparent 45%);
+  animation: mistDrift 8s ease-in-out infinite;
+}
+
+@keyframes mistDrift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(6%, -4%);
+    opacity: 1;
+  }
+}
+
+.mistLabel {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(200, 210, 240, 0.45);
+}
+
+/* Bottom panel: narrative + actions — never overlaps entity zone above */
+.bottomPanel {
+  flex-shrink: 0;
+  padding: 14px 16px 20px;
+  background: linear-gradient(0deg, rgba(6, 8, 14, 0.97), rgba(10, 12, 22, 0.88));
+  border-top: 1px solid rgba(100, 120, 200, 0.12);
+  max-height: min(42vh, 380px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 25;
+}
+
+.enemyTag {
+  text-align: center;
+  font-size: 13px;
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+.narrative {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #d4dff5;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.storyFlash {
+  animation: storyPop 0.5s ease;
+}
+
+@keyframes storyPop {
+  from {
+    opacity: 0.4;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actionBtn {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(130, 170, 255, 0.25);
+  background: rgba(30, 40, 70, 0.55);
+  color: #e8f0ff;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: rgba(45, 60, 100, 0.75);
+  border-color: rgba(160, 200, 255, 0.4);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading,
+.error {
+  padding: 40px 20px;
+  text-align: center;
+  color: #9aa4bc;
+}
+
+.error {
+  color: #fca5a5;
+}
+
+.milestoneBanner {
+  font-size: 12px;
+  color: #c4b5fd;
+  text-align: center;
+  padding: 6px;
 }

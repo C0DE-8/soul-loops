@@ -23,6 +23,32 @@ const { getShopInventory, purchaseSkill } = require('../utils/meta/soulLibraryEn
 const { buildPredictiveSuggestions } = require('../utils/gameAction/predictiveSuggestions');
 const { resolvePendingMilestones } = require('../utils/storyMilestones');
 
+/**
+ * Layered visuals: background + side vessel sprite + encounter entity (matches `starting_vessels` by species).
+ */
+async function buildVisualsPayload(db, player, { backgroundUrl, entityUrl }) {
+    let user_vessel = null;
+    try {
+        const species = String(player.species || '').trim();
+        if (species) {
+            const [rows] = await db.execute(
+                'SELECT vessel_image FROM starting_vessels WHERE species = ? LIMIT 1',
+                [species]
+            );
+            if (rows.length && rows[0].vessel_image) {
+                user_vessel = rows[0].vessel_image;
+            }
+        }
+    } catch (err) {
+        console.error('VISUALS_VESSEL_LOOKUP:', err.message);
+    }
+    return {
+        background: backgroundUrl || null,
+        user_vessel: user_vessel,
+        entity: entityUrl || null
+    };
+}
+
 function buildStatsBlock(player, finalHp) {
     return {
         hp: finalHp,
@@ -230,6 +256,11 @@ router.get('/status', async (req, res) => {
         const history = logRows.reverse();
         const lastLog = history[history.length - 1];
 
+        const visuals = await buildVisualsPayload(db, player, {
+            backgroundUrl: lastLog ? lastLog.bg_image : null,
+            entityUrl: lastLog ? lastLog.encounter_image : null
+        });
+
         res.json({
             player_state: player,
             recent_history: history.map(h => ({
@@ -237,10 +268,7 @@ router.get('/status', async (req, res) => {
                 system_response: h.system_response
             })),
             choices: lastLog ? JSON.parse(lastLog.choices) : [],
-            visuals: {
-                background: lastLog ? lastLog.bg_image : null,
-                entity: lastLog ? lastLog.encounter_image : null
-            }
+            visuals
         });
 
     } catch (err) {
@@ -381,6 +409,11 @@ router.post('/action', async (req, res) => {
                 monsterImageUrl: null
             });
 
+            const visuals = await buildVisualsPayload(db, player, {
+                backgroundUrl: evolutionBg,
+                entityUrl: null
+            });
+
             return res.json({
                 status: finalData.isAlive ? "ALIVE" : "DEAD",
                 stats: buildStatsBlock(player, finalData.finalHp),
@@ -388,10 +421,7 @@ router.post('/action', async (req, res) => {
                 enemy_stats: null,
                 system_output: finalData.cleanStory,
                 choices: finalData.finalChoices,
-                visuals: {
-                    background: evolutionBg,
-                    entity: null
-                },
+                visuals,
                 evolution_complete: true
             });
         }
@@ -464,6 +494,11 @@ router.post('/action', async (req, res) => {
             monsterImageUrl: actionFlow.monsterImageUrl
         });
 
+        const visuals = await buildVisualsPayload(db, player, {
+            backgroundUrl: aiData.backgroundUrl,
+            entityUrl: actionFlow.monsterImageUrl
+        });
+
         // --- 8. SEND RESPONSE ---
         return res.json({
             status: finalData.isAlive ? "ALIVE" : "DEAD",
@@ -484,10 +519,7 @@ router.post('/action', async (req, res) => {
             // --------------------------------------------
             system_output: finalData.cleanStory,
             choices: finalData.finalChoices,
-            visuals: {
-                background: aiData.backgroundUrl,
-                entity: actionFlow.monsterImageUrl
-            }
+            visuals
         });
 
     } catch (err) {
