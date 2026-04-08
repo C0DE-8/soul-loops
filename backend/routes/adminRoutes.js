@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const { verifyToken, verifyAdmin } = require('../middleware/auth');
-const upload = require('../utils/uploadService'); 
+const upload = require('../utils/uploadService');
+const { refreshSoulRankAndMirrorKarma } = require('../utils/soulProgression'); 
 
 router.use(verifyToken, verifyAdmin);
 const getDynamicUrl = (req) => `${req.protocol}://${req.get('host')}`;
@@ -349,14 +350,27 @@ router.get('/world-state', async (req, res) => {
 
 router.post('/grant-karma', async (req, res) => {
     const { targetUserId, karmaAmount } = req.body;
+    const uid = Math.floor(Number(targetUserId));
+    const delta = Math.floor(Number(karmaAmount));
+    if (!Number.isFinite(uid) || uid <= 0 || !Number.isFinite(delta)) {
+        return res.status(400).json({ error: 'Invalid targetUserId or karmaAmount.' });
+    }
+
+    const conn = await db.getConnection();
     try {
-        await db.execute(
-            'UPDATE soul_library SET accumulated_karma = accumulated_karma + ? WHERE user_id = ?',
-            [karmaAmount, targetUserId]
+        await conn.beginTransaction();
+        await conn.execute(
+            'UPDATE soul_library SET accumulated_karma = GREATEST(0, accumulated_karma + ?) WHERE user_id = ?',
+            [delta, uid]
         );
-        res.json({ message: `[SYSTEM OVERRIDE] Granted ${karmaAmount} Karma to Soul ID: ${targetUserId}` });
+        await refreshSoulRankAndMirrorKarma(conn, uid);
+        await conn.commit();
+        res.json({ message: `[SYSTEM OVERRIDE] Granted ${delta} Karma to Soul ID: ${uid}` });
     } catch (err) {
+        await conn.rollback();
         res.status(500).json({ error: err.message });
+    } finally {
+        conn.release();
     }
 });
 

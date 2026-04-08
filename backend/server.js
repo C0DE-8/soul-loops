@@ -9,8 +9,6 @@ const gameRoutes = require('./routes/gameRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const playerRoutes = require('./routes/playerRoutes'); 
 const duelRoutes = require('./routes/duelRoutes');
-const reincarnationRoutes = require('./routes/reincarnateRouter');
-
 
 const app = express();
 
@@ -25,7 +23,6 @@ app.use('/api/game', gameRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/player', playerRoutes);
 app.use('/api/duel', duelRoutes);
-app.use('/api/reincarnate', reincarnationRoutes);
 
 const PORT = process.env.PORT || 7000;
 app.listen(PORT, () => {

@@ -117,7 +117,8 @@ function mergeAllSoulSkills(permanentSkillsRaw, librarySkillsRaw) {
 
 async function fetchActivePlayerState(userId) {
     const [playerRows] = await db.execute(`
-        SELECT c.*, u.username, u.system_voice, u.permanent_skills, u.karma,
+        SELECT c.*, u.username, u.system_voice, u.permanent_skills,
+               s.accumulated_karma AS karma,
                s.skills AS library_skills
         FROM current_life c
         JOIN users u ON c.user_id = u.id
@@ -142,7 +143,8 @@ async function fetchActivePlayerState(userId) {
  */
 async function fetchLatestLifeForUser(userId) {
     const [playerRows] = await db.execute(`
-        SELECT c.*, u.username, u.system_voice, u.permanent_skills, u.karma,
+        SELECT c.*, u.username, u.system_voice, u.permanent_skills,
+               s.accumulated_karma AS karma,
                s.skills AS library_skills
         FROM current_life c
         JOIN users u ON c.user_id = u.id

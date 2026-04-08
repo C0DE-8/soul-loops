@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
+const { refreshSoulRankAndMirrorKarma } = require('../utils/soulProgression');
 require('dotenv').config();
 
 const router = express.Router();
@@ -23,6 +24,8 @@ router.post('/register', async (req, res) => {
             'INSERT INTO soul_library (user_id, permanent_skills, skills) VALUES (?, ?, ?)',
             [newUserId, '[]', '{}']
         );
+
+        await refreshSoulRankAndMirrorKarma(db, newUserId);
 
         res.status(201).json({ message: "Soul registered. Welcome to the Loop." });
     } catch (err) {

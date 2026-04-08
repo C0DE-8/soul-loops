@@ -1,8 +1,10 @@
 /**
- * Soul Library — meta-progression shop (users.karma + users.permanent_skills).
+ * Soul Library — meta-progression shop (soul_library.accumulated_karma + users.permanent_skills).
+ * Spendable karma is stored in soul_library.accumulated_karma and mirrored to users.karma.
  */
 
 const defaultPool = require('../../config/db');
+const { refreshSoulRankAndMirrorKarma } = require('../soulProgression');
 
 function parseOwnedSkills(value) {
     if (value == null || value === '') return [];
@@ -41,7 +43,10 @@ async function getShopInventory(userId, db = defaultPool) {
     );
 
     const [userRows] = await db.execute(
-        'SELECT karma, permanent_skills FROM users WHERE id = ?',
+        `SELECT u.permanent_skills, sl.accumulated_karma
+         FROM users u
+         INNER JOIN soul_library sl ON sl.user_id = u.id
+         WHERE u.id = ?`,
         [uid]
     );
 
@@ -51,7 +56,7 @@ async function getShopInventory(userId, db = defaultPool) {
         throw e;
     }
 
-    const karmaBalance = Math.max(0, Math.floor(Number(userRows[0].karma) || 0));
+    const karmaBalance = Math.max(0, Math.floor(Number(userRows[0].accumulated_karma) || 0));
     const ownedNames = new Set(parseOwnedSkills(userRows[0].permanent_skills));
 
     const skills = skillRows.map((row) => ({
@@ -96,7 +101,11 @@ async function purchaseSkill(userId, skillId, db = defaultPool) {
         await conn.beginTransaction();
 
         const [userRows] = await conn.execute(
-            'SELECT id, karma, permanent_skills FROM users WHERE id = ? FOR UPDATE',
+            `SELECT u.permanent_skills, sl.accumulated_karma
+             FROM users u
+             INNER JOIN soul_library sl ON sl.user_id = u.id
+             WHERE u.id = ?
+             FOR UPDATE`,
             [uid]
         );
 
@@ -122,7 +131,8 @@ async function purchaseSkill(userId, skillId, db = defaultPool) {
         const skill = skillRows[0];
         const skillName = String(skill.name);
         const cost = Math.max(0, Math.floor(Number(skill.karma_cost) || 0));
-        const balance = Math.max(0, Math.floor(Number(userRows[0].karma) || 0));
+
+        const balance = Math.max(0, Math.floor(Number(userRows[0].accumulated_karma) || 0));
 
         const owned = parseOwnedSkills(userRows[0].permanent_skills);
         if (owned.includes(skillName)) {
@@ -142,12 +152,29 @@ async function purchaseSkill(userId, skillId, db = defaultPool) {
         const nextSkills = [...owned, skillName];
         const newBalance = balance - cost;
 
+        const [deduct] = await conn.execute(
+            `UPDATE soul_library
+             SET accumulated_karma = accumulated_karma - ?
+             WHERE user_id = ? AND accumulated_karma >= ?`,
+            [cost, uid, cost]
+        );
+
+        if (deduct.affectedRows === 0) {
+            const e = new Error('Insufficient karma.');
+            e.code = 'INSUFFICIENT_KARMA';
+            e.karma_balance = balance;
+            e.karma_required = cost;
+            throw e;
+        }
+
         await conn.execute(
             `UPDATE users
-             SET karma = ?, permanent_skills = ?
+             SET permanent_skills = ?
              WHERE id = ?`,
-            [newBalance, JSON.stringify(nextSkills), uid]
+            [JSON.stringify(nextSkills), uid]
         );
+
+        await refreshSoulRankAndMirrorKarma(conn, uid);
 
         await conn.commit();
 

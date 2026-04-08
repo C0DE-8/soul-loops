@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { parseLibrarySkillsObject } = require('./gameAction/fetchPlayerState');
+const { refreshSoulRankAndMirrorKarma } = require('./soulProgression');
 
 /** Karma granted per temporary mastery in `soul_library.skills` when the life ends (Soul Stream). */
 const KARMA_PER_TEMPORARY_SKILL = 5;
@@ -138,6 +139,8 @@ async function processSoulStreamTransition(userId, player) {
             [karmaEarned, '{}', userId]
         );
 
+        await refreshSoulRankAndMirrorKarma(conn, userId);
+
         const [totals] = await conn.execute(
             'SELECT accumulated_karma FROM soul_library WHERE user_id = ?',
             [userId]
@@ -204,6 +207,16 @@ async function assertNoActiveLife(conn, userId) {
     }
 }
 
+/**
+ * Ensures no stray active rows remain before inserting a new vessel (defensive).
+ */
+async function markAllCurrentLivesDead(conn, userId) {
+    await conn.execute(
+        'UPDATE current_life SET is_alive = 0, hp = 0 WHERE user_id = ? AND is_alive = 1',
+        [userId]
+    );
+}
+
 async function assertSoulStreamCompleted(conn, userId) {
     const pool = conn || db;
     const [rows] = await pool.execute(
@@ -242,6 +255,7 @@ async function rebirthWithVessel(userId, vesselId) {
 
         await assertNoActiveLife(conn, userId);
         await assertSoulStreamCompleted(conn, userId);
+        await markAllCurrentLivesDead(conn, userId);
 
         await conn.execute(
             'UPDATE soul_library SET skills = ? WHERE user_id = ?',
@@ -339,8 +353,8 @@ async function rebirthWithVessel(userId, vesselId) {
 /**
  * DYNAMIC BIRTH ENGINE (AI reincarnation route — existing)
  */
-const performIsekaiBirth = async (userId, determinedPath, aiSuggestions) => {
-    let [vessels] = await db.execute(
+const performIsekaiBirth = async (userId, determinedPath, aiSuggestions, pool = db) => {
+    let [vessels] = await pool.execute(
         'SELECT * FROM starting_vessels WHERE soul_path = ? ORDER BY RAND() LIMIT 1',
         [determinedPath]
     );
@@ -350,7 +364,7 @@ const performIsekaiBirth = async (userId, determinedPath, aiSuggestions) => {
         const species = aiSuggestions.species || `${determinedPath} Variant`;
         const location = aiSuggestions.location || 'elroe_upper';
 
-        const [insertVessel] = await db.execute(
+        const [insertVessel] = await pool.execute(
             `INSERT INTO starting_vessels 
             (soul_path, species, base_hp, base_mp, base_offense, base_defense, base_speed, base_hunger, base_sp, starting_location) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -368,7 +382,7 @@ const performIsekaiBirth = async (userId, determinedPath, aiSuggestions) => {
             ]
         );
 
-        const [newRows] = await db.execute('SELECT * FROM starting_vessels WHERE vessel_id = ?', [insertVessel.insertId]);
+        const [newRows] = await pool.execute('SELECT * FROM starting_vessels WHERE vessel_id = ?', [insertVessel.insertId]);
         vessel = newRows[0];
     } else {
         vessel = vessels[0];
@@ -387,5 +401,6 @@ module.exports = {
     archiveLife,
     processSoulStreamTransition,
     rebirthWithVessel,
-    mapStartingVesselToDraft
+    mapStartingVesselToDraft,
+    markAllCurrentLivesDead
 };
