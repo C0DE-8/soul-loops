@@ -23,6 +23,9 @@ async function buildAiGameResponse({
     monsterContext,
     worldLore,
     memoryContext,
+    canonContext = null,
+    npcPromptContext = '',
+    canonUpdates = [],
     db,
     storyContext = '',
     prioritizeLifeActions = false
@@ -65,6 +68,24 @@ ${monsterContext || "None"}
 
 [WORLD LORE]
 ${worldLore || "None"}
+
+[APPROVED CANON CONTEXT]
+${canonContext ? JSON.stringify({
+    region: canonContext.region,
+    place: canonContext.place,
+    places: (canonContext.places || []).slice(0, 5),
+    factions: (canonContext.factions || []).slice(0, 5),
+    entities: (canonContext.entities || []).slice(0, 5),
+    monster_species: (canonContext.monster_species || []).slice(0, 5),
+    powers: (canonContext.powers || []).slice(0, 5),
+    lore_entries: (canonContext.lore_entries || []).slice(0, 5),
+    world_events: (canonContext.world_events || []).slice(0, 5)
+}) : "None"}
+
+[CANON UPDATES APPROVED THIS TURN]
+${canonUpdates && canonUpdates.length ? JSON.stringify(canonUpdates) : "None"}
+
+${npcPromptContext || "[NPC EMOTION CONTEXT]\nNone"}
 
 [ENGINE FEED]
 ${engineNotice || "None"}

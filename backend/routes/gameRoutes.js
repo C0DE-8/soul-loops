@@ -22,6 +22,14 @@ const { logActionResult } = require('../utils/gameAction/logActionResult');
 const { getShopInventory, purchaseSkill } = require('../utils/meta/soulLibraryEngine');
 const { buildPredictiveSuggestions } = require('../utils/gameAction/predictiveSuggestions');
 const { resolvePendingMilestones } = require('../utils/storyMilestones');
+const {
+    fetchRecentDiscoveries,
+    fetchActiveWorldFlags
+} = require('../utils/worldBuilder/fetchCanonContext');
+const { buildAndApplyWorldProposal } = require('../utils/worldBuilder/buildWorldProposal');
+const { fetchNearbyNpcs, fetchNpcContext } = require('../utils/npc/fetchNpcContext');
+const { buildNpcPromptContext } = require('../utils/npc/buildNpcPromptContext');
+const { applyNpcInteractionOutcome } = require('../utils/npc/applyNpcInteractionOutcome');
 
 /**
  * Layered visuals: background + side vessel sprite + encounter entity (matches `starting_vessels` by species).
@@ -70,6 +78,30 @@ function buildStatsBlock(player, finalHp) {
         speed: player.speed,
         species: player.species
     };
+}
+
+function parseLimit(value, fallback = 25, max = 100) {
+    const n = Math.floor(Number(value));
+    if (!Number.isFinite(n) || n <= 0) return fallback;
+    return Math.min(max, n);
+}
+
+async function listCanonRows(table, orderColumn, limit) {
+    const allowed = new Set([
+        'world_regions',
+        'world_places',
+        'world_entities',
+        'factions',
+        'world_powers',
+        'lore_entries'
+    ]);
+    if (!allowed.has(table)) {
+        throw new Error('Invalid canon table.');
+    }
+    const [rows] = await db.execute(
+        `SELECT * FROM ${table} ORDER BY ${orderColumn} DESC LIMIT ${limit}`
+    );
+    return rows;
 }
 
 // Lock down these routes to authenticated users only
@@ -260,6 +292,11 @@ router.get('/status', async (req, res) => {
             backgroundUrl: lastLog ? lastLog.bg_image : null,
             entityUrl: lastLog ? lastLog.encounter_image : null
         });
+        const [nearbyNpcs, activeWorldFlags, recentDiscoveries] = await Promise.all([
+            fetchNearbyNpcs(db, userId, player, 6),
+            fetchActiveWorldFlags(db, player, 6),
+            fetchRecentDiscoveries(db, userId, player, 10)
+        ]);
 
         res.json({
             player_state: player,
@@ -268,12 +305,137 @@ router.get('/status', async (req, res) => {
                 system_response: h.system_response
             })),
             choices: lastLog ? JSON.parse(lastLog.choices) : [],
-            visuals
+            visuals,
+            nearby_npcs: nearbyNpcs,
+            active_world_flags: activeWorldFlags,
+            recent_discoveries: recentDiscoveries
         });
 
     } catch (err) {
         console.error("STATUS_ERROR:", err);
         res.status(500).json({ error: "Server malfunction." });
+    }
+});
+
+// ==========================================
+// CANON + NPC READ ROUTES
+// ==========================================
+router.get('/canon/regions', async (req, res) => {
+    try {
+        const rows = await listCanonRows('world_regions', 'updated_at', parseLimit(req.query.limit));
+        return res.json({ regions: rows });
+    } catch (err) {
+        console.error('CANON_REGIONS_ERROR:', err);
+        return res.status(500).json({ error: 'Failed to load regions.' });
+    }
+});
+
+router.get('/canon/places', async (req, res) => {
+    try {
+        const rows = await listCanonRows('world_places', 'updated_at', parseLimit(req.query.limit));
+        return res.json({ places: rows });
+    } catch (err) {
+        console.error('CANON_PLACES_ERROR:', err);
+        return res.status(500).json({ error: 'Failed to load places.' });
+    }
+});
+
+router.get('/canon/entities', async (req, res) => {
+    try {
+        const rows = await listCanonRows('world_entities', 'updated_at', parseLimit(req.query.limit));
+        return res.json({ entities: rows });
+    } catch (err) {
+        console.error('CANON_ENTITIES_ERROR:', err);
+        return res.status(500).json({ error: 'Failed to load entities.' });
+    }
+});
+
+router.get('/canon/factions', async (req, res) => {
+    try {
+        const rows = await listCanonRows('factions', 'updated_at', parseLimit(req.query.limit));
+        return res.json({ factions: rows });
+    } catch (err) {
+        console.error('CANON_FACTIONS_ERROR:', err);
+        return res.status(500).json({ error: 'Failed to load factions.' });
+    }
+});
+
+router.get('/canon/powers', async (req, res) => {
+    try {
+        const rows = await listCanonRows('world_powers', 'updated_at', parseLimit(req.query.limit));
+        return res.json({ powers: rows });
+    } catch (err) {
+        console.error('CANON_POWERS_ERROR:', err);
+        return res.status(500).json({ error: 'Failed to load powers.' });
+    }
+});
+
+router.get('/canon/lore', async (req, res) => {
+    try {
+        const rows = await listCanonRows('lore_entries', 'updated_at', parseLimit(req.query.limit));
+        return res.json({ lore: rows });
+    } catch (err) {
+        console.error('CANON_LORE_ERROR:', err);
+        return res.status(500).json({ error: 'Failed to load lore.' });
+    }
+});
+
+router.get('/npcs/nearby', async (req, res) => {
+    const userId = req.user.userId;
+    try {
+        const player = await fetchActivePlayerState(userId);
+        const nearbyNpcs = await fetchNearbyNpcs(db, userId, player, parseLimit(req.query.limit, 6, 20));
+        return res.json({ nearby_npcs: nearbyNpcs });
+    } catch (err) {
+        console.error('NEARBY_NPCS_ERROR:', err);
+        return res.status(500).json({ error: 'Failed to load nearby NPCs.', details: err.message });
+    }
+});
+
+router.get('/npcs/:npcId', async (req, res) => {
+    const userId = req.user.userId;
+    try {
+        const player = await fetchActivePlayerState(userId);
+        const npc = await fetchNpcContext(db, userId, player, req.params.npcId);
+        if (!npc) return res.status(404).json({ error: 'NPC not found.' });
+        return res.json({ npc });
+    } catch (err) {
+        console.error('NPC_DETAIL_ERROR:', err);
+        return res.status(500).json({ error: 'Failed to load NPC.', details: err.message });
+    }
+});
+
+router.get('/chronicle/recent', async (req, res) => {
+    const userId = req.user.userId;
+    try {
+        const player = await fetchActivePlayerState(userId);
+        const limit = parseLimit(req.query.limit, 12, 50);
+        const [logs, events, discoveries] = await Promise.all([
+            db.execute(
+                `SELECT user_action, system_response, created_at
+                 FROM action_logs
+                 WHERE life_id = ?
+                 ORDER BY created_at DESC
+                 LIMIT ${limit}`,
+                [player.life_id]
+            ),
+            db.execute(
+                `SELECT *
+                 FROM world_events
+                 WHERE status IN ('rumor','active','resolved')
+                 ORDER BY updated_at DESC
+                 LIMIT 10`
+            ),
+            fetchRecentDiscoveries(db, userId, player, 10)
+        ]);
+        return res.json({
+            action_history: logs[0],
+            world_events: events[0],
+            recent_discoveries: discoveries
+        });
+    } catch (err) {
+        console.error('CHRONICLE_ERROR:', err);
+        return res.status(500).json({ error: 'Failed to load chronicle.', details: err.message });
     }
 });
 
@@ -422,7 +584,11 @@ router.post('/action', async (req, res) => {
                 system_output: finalData.cleanStory,
                 choices: finalData.finalChoices,
                 visuals,
-                evolution_complete: true
+                evolution_complete: true,
+                discoveries: [],
+                npc_reactions: [],
+                canon_updates: [],
+                active_world_flags: []
             });
         }
 
@@ -451,6 +617,20 @@ router.post('/action', async (req, res) => {
         const { story_injection, milestones_fired } = await resolvePendingMilestones(db, accountId, player);
         const prioritizeLifeActions = !actionFlow.activeMonster;
 
+        // --- 3.8 STRUCTURED CANON PIPELINE — world-builder mode, JSON only, DB validated ---
+        const worldBuild = await buildAndApplyWorldProposal({
+            db,
+            player,
+            userId,
+            action: normalizedAction,
+            engineNotice: actionFlow.engineNotice,
+            storyContext: story_injection || '',
+            actionFlow
+        });
+
+        const nearbyNpcs = await fetchNearbyNpcs(db, userId, player, 6);
+        const npcPromptContext = buildNpcPromptContext({ nearbyNpcs });
+
         // --- 4. BUILD AI RESPONSE (Gemini) ---
         const aiData = await buildAiGameResponse({
             player,
@@ -459,6 +639,9 @@ router.post('/action', async (req, res) => {
             monsterContext: actionFlow.monsterContext,
             worldLore: actionFlow.worldLore,
             memoryContext: memoryContext,
+            canonContext: worldBuild.canonContext,
+            npcPromptContext,
+            canonUpdates: worldBuild.canonUpdates,
             db,
             storyContext: story_injection || '',
             prioritizeLifeActions
@@ -474,6 +657,20 @@ router.post('/action', async (req, res) => {
             evolutionNotice: actionFlow.evolutionNotice || '',
             evolutionChoices: actionFlow.evolutionChoices || []
         });
+
+        const npcReactions = await applyNpcInteractionOutcome({
+            db,
+            userId,
+            player,
+            action: normalizedAction,
+            nearbyNpcs,
+            sceneSummary: finalData.cleanStory
+        });
+
+        const [activeWorldFlags, recentDiscoveries] = await Promise.all([
+            fetchActiveWorldFlags(db, player, 6),
+            fetchRecentDiscoveries(db, userId, player, 10)
+        ]);
 
         // --- 6. SAVE UPDATED PLAYER STATE ---
         await saveUpdatedPlayerState({
@@ -519,7 +716,11 @@ router.post('/action', async (req, res) => {
             // --------------------------------------------
             system_output: finalData.cleanStory,
             choices: finalData.finalChoices,
-            visuals
+            visuals,
+            discoveries: recentDiscoveries,
+            npc_reactions: npcReactions,
+            canon_updates: worldBuild.canonUpdates,
+            active_world_flags: activeWorldFlags
         });
 
     } catch (err) {
