@@ -139,7 +139,7 @@ Context (JSON):
 ${JSON.stringify(payload, null, 2)}
 
 Respond with ONLY a JSON array of 3 to 5 strings (no markdown, no explanation), for example:
-["Travel DOWN to Elroe Middle", "Travel RIGHT to Fungus Grotto"]`;
+["Travel DOWN to Nadir Middle", "Travel RIGHT to Fungus Grotto"]`;
 
     try {
         const result = await model.generateContent(userPrompt);

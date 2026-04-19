@@ -26,7 +26,7 @@ const getCounterDamage = (monster, player) => {
     );
 };
 
-/** Prefer longer skill names so "Hellfire" does not steal match from "Hellfire Orb". */
+/** Prefer longer skill names so partial names do not steal matches from full active skills. */
 function findMatchedActiveSkill(actionLower, activeSkills) {
     if (!Array.isArray(activeSkills) || activeSkills.length === 0) return null;
     const sorted = [...activeSkills].sort(

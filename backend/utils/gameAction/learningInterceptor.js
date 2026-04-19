@@ -1,6 +1,6 @@
 const { parsePermanentSkillNames, parseLibrarySkillsObject } = require('./fetchPlayerState');
 
-const DETECTION_SKILL = 'Detection';
+const ECHO_SENSE_SKILL = 'Echo Sense';
 const SEARCHES_REQUIRED = 5;
 
 function isSearchAction(normalizedAction) {
@@ -8,12 +8,12 @@ function isSearchAction(normalizedAction) {
 }
 
 /**
- * Reward repeated Search: after 5 Search actions in the current life, grant "Detection" at Level 1.
- * Persists ONLY to `soul_library.skills` as JSON object `{ "Detection": 1 }`. Never writes `users.permanent_skills`.
+ * Reward repeated Search: after 5 Search actions in the current life, grant "Echo Sense" at Level 1.
+ * Persists ONLY to `soul_library.skills` as JSON object `{ "Echo Sense": 1 }`. Never writes `users.permanent_skills`.
  *
  * @returns {Promise<{ engineNotice: string }>}
  */
-async function maybeLearnDetectionFromSearch(db, userId, player, normalizedAction) {
+async function maybeLearnEchoSenseFromSearch(db, userId, player, normalizedAction) {
     if (!isSearchAction(normalizedAction)) {
         return { engineNotice: '' };
     }
@@ -31,11 +31,11 @@ async function maybeLearnDetectionFromSearch(db, userId, player, normalizedActio
     }
 
     const map = parseLibrarySkillsObject(player.library_skills);
-    if (map[DETECTION_SKILL] != null) {
+    if (map[ECHO_SENSE_SKILL] != null) {
         return { engineNotice: '' };
     }
 
-    map[DETECTION_SKILL] = 1;
+    map[ECHO_SENSE_SKILL] = 1;
     const skillsJson = JSON.stringify(map);
 
     await db.execute(
@@ -50,11 +50,11 @@ async function maybeLearnDetectionFromSearch(db, userId, player, normalizedActio
 
     return {
         engineNotice:
-            "[SKILL EARNED: Your constant vigilance has unlocked the skill 'Detection'!]"
+            "[SKILL EARNED: Your constant vigilance has unlocked the skill 'Echo Sense'!]"
     };
 }
 
 module.exports = {
-    maybeLearnDetectionFromSearch,
+    maybeLearnEchoSenseFromSearch,
     isSearchAction
 };

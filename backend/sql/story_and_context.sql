@@ -9,7 +9,7 @@ WHERE `location_id` = 'webbed_hollows';
 
 UPDATE `location_seeds`
 SET `hidden_lore` = 'Carved into the damp stone: a faint mark that resembles a reincarnator\'s skill menu glyph.'
-WHERE `location_id` = 'elroe_upper' AND (`hidden_lore` IS NULL OR `hidden_lore` = '');
+WHERE `location_id` = 'nadir_upper' AND (`hidden_lore` IS NULL OR `hidden_lore` = '');
 
 CREATE TABLE IF NOT EXISTS `story_milestones` (
   `milestone_id` int(11) NOT NULL AUTO_INCREMENT,
@@ -33,5 +33,5 @@ CREATE TABLE IF NOT EXISTS `user_story_milestones` (
 
 INSERT INTO `story_milestones` (`code`, `min_level`, `location_id`, `content`, `sort_order`) VALUES
 ('soul_resonance_lv5', 5, NULL, '[STORY BEAT] The System\'s voice steadies: your soul-resonance has crossed a threshold. Distant threads of other reincarnators tug at the edge of your perception — not as enemies, but as echoes in the same cruel fairytale.', 10),
-('labyrinth_whispers', NULL, 'elroe_upper', '[STORY BEAT] The upper labyrinth hums with more than monsters: somewhere, silk drags across stone, and a name you almost recognize flits through your thoughts.', 20)
+('labyrinth_whispers', NULL, 'nadir_upper', '[STORY BEAT] The upper labyrinth hums with more than monsters: somewhere, silk drags across stone, and a name you almost recognize flits through your thoughts.', 20)
 ON DUPLICATE KEY UPDATE `content` = VALUES(`content`);

@@ -8,7 +8,7 @@ const { parseSurvivalAction } = require('../actionParser');
 const { handleZoneTravel } = require('../travelEngine');
 const { handleScavengeAction } = require('./scavengeEngine');
 const { checkEvolutionEligibility, evolvePlayer } = require('../evolutionEngine');
-const { maybeLearnDetectionFromSearch } = require('./learningInterceptor');
+const { maybeLearnEchoSenseFromSearch } = require('./learningInterceptor');
 const { maybeProgressMastery } = require('./skillMasteryInterceptor');
 const { enrichSearchExploration, isSearchLikeAction } = require('./searchExploration');
 
@@ -28,7 +28,7 @@ function emptyFlowTail() {
 async function applyActionFlow({ player, userId, action, db }) {
     const normalizedAction = String(action || '').trim();
 
-    // --- 0. EVOLUTION COMMAND (e.g. "Evolve: Small Taratect") — meta action, skips combat/travel/AI ---
+    // --- 0. EVOLUTION COMMAND (e.g. "Evolve: Gloomthread Weaver") — meta action, skips combat/travel/AI ---
     const evoCmd = /^Evolve:\s*(.+)$/i.exec(normalizedAction);
     if (evoCmd) {
         const toSpecies = evoCmd[1].trim();
@@ -142,13 +142,13 @@ async function applyActionFlow({ player, userId, action, db }) {
         engineNotice += ` ${levelUpNotice}`;
     }
 
-    // --- 7.5. LEARNING (Search ×5 → Detection L1 in soul_library.skills object) ---
-    const learnResult = await maybeLearnDetectionFromSearch(db, userId, player, normalizedAction);
+    // --- 7.5. LEARNING (Search ×5 → Echo Sense L1 in soul_library.skills object) ---
+    const learnResult = await maybeLearnEchoSenseFromSearch(db, userId, player, normalizedAction);
     if (learnResult.engineNotice) {
         engineNotice += ` ${learnResult.engineNotice}`;
     }
 
-    // --- 7.6. MASTERY (e.g. Search + own Detection → 20% chance to level temporary mastery) ---
+    // --- 7.6. MASTERY (e.g. Search + own Echo Sense → 20% chance to level temporary mastery) ---
     const masteryResult = await maybeProgressMastery(db, userId, player, normalizedAction);
     if (masteryResult.engineNotice) {
         engineNotice += ` ${masteryResult.engineNotice}`;

@@ -31,7 +31,7 @@ function parseInventoryArray(player) {
 }
 
 function pickLootLabel(actionLower) {
-    if (actionLower.includes('silk')) return 'Taratect Silk';
+    if (actionLower.includes('silk')) return 'Gloomthread Silk';
     if (actionLower.includes('meat') || actionLower.includes('butcher')) return 'Monster Meat';
     if (actionLower.includes('chitin') || actionLower.includes('shell')) return 'Monster Chitin';
     return 'Monster Loot';

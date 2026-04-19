@@ -20,7 +20,7 @@ Return valid JSON only. No markdown. No narration. No combat results.
 The backend is the source of truth. You may only propose missing canon. The backend will validate and may reject it.
 
 Tone target: dark fantasy, reincarnation, evolution, labyrinth survival, emotional mystery.
-Do not use copyrighted anime names, copied places, copied factions, copied powers, or copied lore.
+Do not use copyrighted media names, copied places, copied factions, copied powers, or copied lore.
 Do not contradict existing canon. Use rumor/suspected/hidden when uncertainty is appropriate.
 
 Allowed enum values:

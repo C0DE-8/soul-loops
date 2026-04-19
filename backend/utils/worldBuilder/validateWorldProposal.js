@@ -1,10 +1,13 @@
 const { VALID_ENUMS } = require('../../config/worldBuilderPrompts');
 
-const BANNED_TERMS = [
-    'naruto', 'sasuke', 'konoha', 'uchiha', 'goku', 'vegeta', 'frieza',
-    'rimuru', 'tempest', 'ainz', 'nazarick', 'sao', 'kirito', 'asuna',
-    'tanjiro', 'nezuko', 'demonslayer', 'one piece', 'luffy', 'zoro',
-    'bleach', 'ichigo', 'kumoko', 'wakaba', 'shiraori', 'ariel', 'potimas'
+const BANNED_PATTERNS = [
+    /\b[a-z]+-kage\b/i,
+    /\bsuper\s+saiyan\b/i,
+    /\bdeath\s+note\b/i,
+    /\bspirit\s+bomb\b/i,
+    /\bdevil\s+fruit\b/i,
+    /\bbankai\b/i,
+    /\bsharingan\b/i
 ];
 
 function asArray(value) {
@@ -16,8 +19,8 @@ function cleanString(value, max = 2000) {
 }
 
 function hasBannedTerm(value) {
-    const text = String(value || '').toLowerCase();
-    return BANNED_TERMS.some(term => text.includes(term));
+    const text = String(value || '');
+    return BANNED_PATTERNS.some(pattern => pattern.test(text));
 }
 
 function isAllowed(value, allowed, fallback) {

@@ -18,8 +18,8 @@ function parsePermanentSkillNames(raw) {
 const MAX_MASTERY_LEVEL = 10;
 
 /**
- * `soul_library.skills` as JSON object: { "Detection": 3, ... } (levels 1–10).
- * Migrates legacy JSON arrays ["Detection"] → { "Detection": 1 }.
+ * `soul_library.skills` as JSON object: { "Echo Sense": 3, ... } (levels 1–10).
+ * Migrates legacy JSON arrays ["Echo Sense"] → { "Echo Sense": 1 }.
  */
 function parseLibrarySkillsObject(raw) {
     if (raw == null || raw === '') return {};

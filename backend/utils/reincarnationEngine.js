@@ -29,7 +29,7 @@ function mapStartingVesselToDraft(row) {
         description: `A ${row.soul_path || 'soul'} path vessel: ${row.species}.`,
         base_hp: Number(row.base_hp) || 10,
         base_mp: Number(row.base_mp) || 10,
-        starting_location: row.starting_location || 'elroe_upper',
+        starting_location: row.starting_location || 'nadir_upper',
         vessel_image: row.vessel_image || null,
         base_offense: Number(row.base_offense) || 5,
         base_defense: Number(row.base_defense) || 5,
@@ -282,7 +282,7 @@ async function rebirthWithVessel(userId, vesselId) {
         const res = Number(v.base_resistance) || 5;
         const spd = Number(v.base_speed) || 5;
         const hunger = Number(v.base_hunger) || 100;
-        const loc = v.starting_location || 'elroe_upper';
+        const loc = v.starting_location || 'nadir_upper';
         const species = v.species || 'Unknown Vessel';
         const vesselType = v.soul_path || 'Beast';
 
@@ -353,7 +353,7 @@ async function rebirthWithVessel(userId, vesselId) {
 /**
  * DYNAMIC BIRTH ENGINE (AI reincarnation route — existing)
  */
-const performIsekaiBirth = async (userId, determinedPath, aiSuggestions, pool = db) => {
+const performReincarnationBirth = async (userId, determinedPath, aiSuggestions, pool = db) => {
     let [vessels] = await pool.execute(
         'SELECT * FROM starting_vessels WHERE soul_path = ? ORDER BY RAND() LIMIT 1',
         [determinedPath]
@@ -362,7 +362,7 @@ const performIsekaiBirth = async (userId, determinedPath, aiSuggestions, pool = 
     let vessel;
     if (vessels.length === 0 || aiSuggestions.forceNew) {
         const species = aiSuggestions.species || `${determinedPath} Variant`;
-        const location = aiSuggestions.location || 'elroe_upper';
+        const location = aiSuggestions.location || 'nadir_upper';
 
         const [insertVessel] = await pool.execute(
             `INSERT INTO starting_vessels 
@@ -392,7 +392,7 @@ const performIsekaiBirth = async (userId, determinedPath, aiSuggestions, pool = 
 };
 
 module.exports = {
-    performIsekaiBirth,
+    performReincarnationBirth,
     SOUL_STREAM_ACTION,
     SYSTEM_OUTPUT_SOUL_STREAM,
     calculateKarma,

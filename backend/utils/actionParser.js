@@ -19,7 +19,7 @@ const parseSurvivalAction = (player, actionText, engineNotice) => {
         
         if (roll > 0.8) {
             // RARE: High-value resource
-            engineNotice += ` [SYSTEM_EVENT: AREA_SCAN_COMPLETE. Detected: 'Great Elroe Apple Tree'. High caloric value, but guarded by height.]`;
+            engineNotice += ` [SYSTEM_EVENT: AREA_SCAN_COMPLETE. Detected: 'Gravefruit Spire'. High caloric value, but guarded by height.]`;
         } else if (roll > 0.4) {
             // COMMON: Small Prey
             const preys = ['Lesser Frog', 'Blind Cave Rat', 'Drain Beetle'];

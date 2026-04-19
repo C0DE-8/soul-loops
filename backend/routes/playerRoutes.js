@@ -166,7 +166,7 @@ router.get('/profile', async (req, res) => {
 
     } catch (err) {
         console.error("PROFILE_FETCH_ERROR:", err);
-        res.status(500).json({ error: "Failed to sync with the Voice of the World." });
+        res.status(500).json({ error: "Failed to sync with the Voice of the Deep." });
     }
 });
 

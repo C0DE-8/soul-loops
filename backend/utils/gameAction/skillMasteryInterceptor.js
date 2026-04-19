@@ -13,7 +13,7 @@ const LEVEL_UP_ROLL = 0.2;
  */
 const ACTION_MASTERY_RULES = [
     {
-        skillName: 'Detection',
+        skillName: 'Echo Sense',
         matches: (normalizedAction) =>
             String(normalizedAction || '').trim().toLowerCase() === 'search'
     }

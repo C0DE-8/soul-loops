@@ -12,7 +12,7 @@ const {
     SOUL_STREAM_ACTION,
     processSoulStreamTransition,
     rebirthWithVessel,
-    performIsekaiBirth,
+    performReincarnationBirth,
     markAllCurrentLivesDead
 } = require('../utils/reincarnationEngine');
 const { buildAiGameResponse } = require('../utils/gameAction/buildAiGameResponse');
@@ -108,13 +108,13 @@ async function listCanonRows(table, orderColumn, limit) {
 router.use(verifyToken);
 
 // ==========================================
-// AI Soul Scan (Isekai) — consolidated under /api/game/reincarnate/isekai/*
+// AI Soul Scan (Reincarnation) — consolidated under /api/game/reincarnate/reincarnation/*
 // ==========================================
-router.get('/reincarnate/isekai/questions', async (req, res) => {
+router.get('/reincarnate/reincarnation/questions', async (req, res) => {
     try {
         const prompt = `
             [SYSTEM: INITIATING SOUL SCAN]
-            Role: 'Voice of the World' (Cold, mechanical, objective).
+            Role: 'Voice of the Deep' (Cold, mechanical, objective).
             Task: Generate 3 deep psychological questions to judge a human soul before reincarnation.
             Each question must have exactly 3 options that lean toward:
             1. Predator (Aggression/Power)
@@ -143,7 +143,7 @@ router.get('/reincarnate/isekai/questions', async (req, res) => {
     }
 });
 
-router.post('/reincarnate/isekai', async (req, res) => {
+router.post('/reincarnate/reincarnation', async (req, res) => {
     const userId = req.user?.userId;
     const { answers } = req.body;
 
@@ -166,7 +166,7 @@ router.post('/reincarnate/isekai', async (req, res) => {
             {
               "path": "Predator | Prey | Scavenger",
               "species": "Unique Species Name",
-              "location": "elroe_upper | royal_capital | magma_layer | water_stratum | elroe_lower",
+              "location": "nadir_upper | crown_citadel | magma_layer | drowned_veins | nadir_lower",
               "hp": 120, "mp": 60, "offense": 25, "defense": 25, "speed": 25, "sp": 60
             }
         `;
@@ -182,7 +182,7 @@ router.post('/reincarnate/isekai', async (req, res) => {
 
             await markAllCurrentLivesDead(conn, userId);
 
-            vessel = await performIsekaiBirth(userId, blueprint.path, blueprint, conn);
+            vessel = await performReincarnationBirth(userId, blueprint.path, blueprint, conn);
 
             const [insertResult] = await conn.execute(
                 `INSERT INTO current_life (
@@ -234,7 +234,7 @@ router.post('/reincarnate/isekai', async (req, res) => {
             },
             { description_seed: vessel.starting_location },
             'Soul Scan Completed. Identity Confirmed.',
-            `The Voice of the World has processed your essence as ${blueprint.path}. Awakening as ${vessel.species} in ${vessel.starting_location}.`
+            `The Voice of the Deep has processed your essence as ${blueprint.path}. Awakening as ${vessel.species} in ${vessel.starting_location}.`
         );
 
         const narrationResult = await model.generateContent(aiPrompt);

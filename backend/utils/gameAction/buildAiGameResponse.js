@@ -114,7 +114,7 @@ The labyrinth holds its breath. No fangs snap at you—only space, thread, and e
 
 ---
 [CHOICE_1: Improve Home Base (Cost: Med SP, Low Hunger)]
-[CHOICE_2: (${String(player.vessel_type || 'BEAST').toUpperCase()}) Practice Skill: Thread Manipulation (Cost: Low SP)]
+[CHOICE_2: (${String(player.vessel_type || 'BEAST').toUpperCase()}) Practice Skill: Weaver Control (Cost: Low SP)]
 [CHOICE_3: Listen to the Labyrinth's Echoes (Cost: Low SP)]
             `.trim();
         } else {

@@ -108,7 +108,7 @@ router.post('/locations/add', upload.single('image'), async (req, res) => {
             `INSERT INTO location_seeds 
             (location_id, description_seed, danger_level, region_name, level_depth, location_image) 
             VALUES (?, ?, ?, ?, ?, ?)`,
-            [location_id, description_seed, danger_level, region_name || 'elroe_labyrinth', level_depth || 0, imageUrl]
+            [location_id, description_seed, danger_level, region_name || 'nadir_labyrinth', level_depth || 0, imageUrl]
         );
 
         res.json({ 
@@ -237,7 +237,7 @@ router.get('/world-map/structure', async (req, res) => {
 
 // [POST] Create the "Jump" Connector
 router.post('/connectors/shortcut', async (req, res) => {
-    const { from_0, to_3 } = req.body; // e.g., 'elroe_upper' to 'deep_abyss'
+    const { from_0, to_3 } = req.body; // e.g., 'nadir_upper' to 'deep_abyss'
     try {
         await db.execute(
             'INSERT INTO location_connectors (from_location, to_location, direction, min_level_req) VALUES (?, ?, "DOWN", 10)',
